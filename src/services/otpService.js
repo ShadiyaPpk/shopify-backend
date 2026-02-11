@@ -1,16 +1,10 @@
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
 
 const otpStore = new Map();
 
-// Configure Nodemailer Transporter
-// User needs to set EMAIL_USER and EMAIL_PASS in .env
-const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS, // This should be an App Password, not main password
-    },
-});
+// Initialize Resend
+// User needs to set RESEND_API_KEY in .env
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 /**
  * Generates a 6-digit OTP and stores it for the given email.
@@ -26,23 +20,22 @@ const generateOTP = async (email) => {
     // Console log for dev/debugging
     console.log(`[OTP-SERVICE] Generated OTP for ${email}: ${otp}`);
 
-    // Send Real Email if credentials exist
-    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+    // Send Real Email via Resend
+    if (process.env.RESEND_API_KEY) {
         try {
-            await transporter.sendMail({
-                from: `"Shopify App" <${process.env.EMAIL_USER}>`,
+            await resend.emails.send({
+                from: 'onboarding@resend.dev', // Default testing domain. Verify your own domain in Resend dashboard for production.
                 to: email,
-                subject: "Your Login OTP",
-                text: `Your OTP code is: ${otp}. It expires in 5 minutes.`,
-                html: `<p>Your OTP code is: <b>${otp}</b></p><p>It expires in 5 minutes.</p>`,
+                subject: 'Your OTP Code',
+                html: `<p>Your OTP code is: <strong>${otp}</strong></p><p>It expires in 5 minutes.</p>`
             });
-            console.log(`[OTP-SERVICE] Email sent to ${email}`);
+            console.log(`[OTP-SERVICE] Email sent to ${email} via Resend`);
         } catch (error) {
-            console.error(`[OTP-SERVICE] Failed to send email:`, error);
+            console.error(`[OTP-SERVICE] Failed to send email via Resend:`, error);
             // We don't throw here so the API still returns success (OTP is generated)
         }
     } else {
-        console.warn("[OTP-SERVICE] Email credentials not found in .env. Email not sent.");
+        console.warn("[OTP-SERVICE] RESEND_API_KEY not found in .env. Email not sent.");
     }
 
     return otp;

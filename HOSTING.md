@@ -18,8 +18,7 @@ We need to host this Node.js app so your Flutter app talks to **this server** in
     *   `STOREFRONT_TOKEN`
     *   `ADMIN_API_ACCESS_TOKEN`
     *   `JWT_SECRET` (Use any random string)
-    *   `EMAIL_USER` (Your Gmail address)
-    *   `EMAIL_PASS` (Your Gmail App Password)
+    *   `RESEND_API_KEY` (Get this from Resend.com)
 7.  Click **Create Web Service**.
 
 ## What to give your Flutter Developer
