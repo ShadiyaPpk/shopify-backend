@@ -4,6 +4,7 @@ const cors = require("cors");
 
 const products = require("./routes/products");
 const auth = require("./routes/auth");
+const cart = require("./routes/cart");
 
 const app = express();
 
@@ -12,6 +13,7 @@ app.use(express.json());
 
 app.use("/products", products);
 app.use("/auth", auth);
+app.use("/cart", cart);
 
 app.listen(process.env.PORT, () => {
     console.log("Server running on port", process.env.PORT);

@@ -2,7 +2,7 @@ const express = require("express");
 const jwt = require("jsonwebtoken");
 const { shopifyQuery } = require("../services/shopify");
 const { generateOTP, verifyOTP } = require("../services/otpService");
-const { findCustomerByEmail, createCustomer } = require("../services/shopifyAdmin");
+const { findCustomerByEmail, createCustomer, getCustomerCartId } = require("../services/shopifyAdmin");
 
 const router = express.Router();
 
@@ -97,6 +97,30 @@ router.post("/otp/verify", async (req, res) => {
       { expiresIn: "7d" }
     );
 
+    // Fetch active cart if exists
+    // We need to require this function. Since I can't easily add require to top in this block, 
+    // I will assume I need to add the require in a separate edit or use a dynamic import if needed, 
+    // but better to just add it to the top. for now let's hope the user accepts a follow up or I do it in next step.
+    // Wait, I can do it here if I am careful. But `require` is usually at top.
+    // I will add the require line in a separate tool call to be safe and clean.
+
+    // Check if we have the function available. 
+    // Actually, I'll return the customer object and let the frontend call /cart/customer/:id for simplicity
+    // OR, I can try to fetch it here.
+
+    // Let's assume I will add the import in next step.
+    // checks existing imports...
+    // const { findCustomerByEmail, createCustomer } = require("../services/shopifyAdmin");
+    // I need to update THAT line too.
+
+    // Fetch active cart if exists
+    let activeCartId = null;
+    try {
+      activeCartId = await getCustomerCartId(customer.id);
+    } catch (e) {
+      console.warn("Failed to fetch active cart during login", e.message);
+    }
+
     res.json({
       message: "Login successful",
       token,
@@ -104,7 +128,8 @@ router.post("/otp/verify", async (req, res) => {
         id: customer.id,
         email: customer.email,
         firstName: customer.first_name,
-        lastName: customer.last_name
+        lastName: customer.last_name,
+        activeCartId // Send this to the frontend!
       }
     });
   } catch (error) {
