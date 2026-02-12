@@ -12,24 +12,25 @@ const resend = new Resend(process.env.RESEND_API_KEY);
  * @returns {Promise<string>} The generated OTP
  */
 const generateOTP = async (email) => {
+    const normalizedEmail = email.toLowerCase().trim();
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
 
-    otpStore.set(email, { otp, expiresAt });
+    otpStore.set(normalizedEmail, { otp, expiresAt });
 
     // Console log for dev/debugging
-    console.log(`[OTP-SERVICE] Generated OTP for ${email}: ${otp}`);
+    console.log(`[OTP-SERVICE] Generated OTP for ${normalizedEmail}: ${otp}`);
 
     // Send Real Email via Resend
     if (process.env.RESEND_API_KEY) {
         try {
             await resend.emails.send({
                 from: 'onboarding@resend.dev', // Default testing domain. Verify your own domain in Resend dashboard for production.
-                to: email,
+                to: normalizedEmail,
                 subject: 'Your OTP Code',
                 html: `<p>Your OTP code is: <strong>${otp}</strong></p><p>It expires in 5 minutes.</p>`
             });
-            console.log(`[OTP-SERVICE] Email sent to ${email} via Resend`);
+            console.log(`[OTP-SERVICE] Email sent to ${normalizedEmail} via Resend`);
         } catch (error) {
             console.error(`[OTP-SERVICE] Failed to send email via Resend:`, error);
             // We don't throw here so the API still returns success (OTP is generated)
@@ -48,20 +49,31 @@ const generateOTP = async (email) => {
  * @returns {boolean} True if valid, false otherwise
  */
 const verifyOTP = (email, otp) => {
-    const record = otpStore.get(email);
+    const normalizedEmail = email.toLowerCase().trim();
+    const record = otpStore.get(normalizedEmail);
 
-    if (!record) return false;
+    console.log(`[OTP-SERVICE] Verifying for ${normalizedEmail}. Input OTP: ${otp}`);
+
+    if (!record) {
+        console.warn(`[OTP-SERVICE] No OTP record found for ${normalizedEmail}`);
+        // Debug: Print all keys in store to see if it's stored under a different key
+        console.log(`[OTP-SERVICE] Current keys in store:`, [...otpStore.keys()]);
+        return false;
+    }
 
     if (Date.now() > record.expiresAt) {
-        otpStore.delete(email);
+        console.warn(`[OTP-SERVICE] OTP expired for ${normalizedEmail}`);
+        otpStore.delete(normalizedEmail);
         return false;
     }
 
     if (record.otp === otp) {
-        otpStore.delete(email);
+        console.log(`[OTP-SERVICE] OTP Success for ${normalizedEmail}`);
+        otpStore.delete(normalizedEmail);
         return true;
     }
 
+    console.warn(`[OTP-SERVICE] Invalid OTP for ${normalizedEmail}. Expected: ${record.otp}, Got: ${otp}`);
     return false;
 };
 

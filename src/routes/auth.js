@@ -51,7 +51,8 @@ router.post("/otp/send", async (req, res) => {
   }
 
   try {
-    const otp = generateOTP(email);
+    const normalizedEmail = email.toLowerCase().trim();
+    const otp = await generateOTP(normalizedEmail);
     // In production, send this via Email/SMS. 
     // For development, it's logged in console by the service.
 
