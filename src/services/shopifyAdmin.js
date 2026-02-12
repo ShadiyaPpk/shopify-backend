@@ -59,30 +59,20 @@ async function createCustomer(email) {
  * @param {string} cartId (e.g., "gid://shopify/Cart/...")
  */
 async function updateCustomerCartId(customerId, cartId) {
-    if (!customerId || !cartId) return;
+    if (!customerId || !cartId) {
+        console.warn("[ShopifyAdmin] Missing customerId or cartId for update");
+        return;
+    }
 
     // customerId might be a GID, we need just the numeric ID for the REST API endpoint usually,
     // BUT for metafields endpoint we can use the customer ID. 
     // However, the REST API mostly uses numeric IDs in the URL: /customers/{customer_id}/metafields.json
     // Let's extract the numeric ID if it's a GID.
     const numericId = customerId.toString().replace("gid://shopify/Customer/", "");
+    console.log(`[ShopifyAdmin] Attempting to update Metafield for Customer ID: ${numericId} with Cart ID: ${cartId}`);
 
     try {
-        // First check if the metafield exists to update it, or create new.
-        // For simplicity in REST, we can just POST to creating a metafield.
-        // If we want to upsert, we might need to find it first or use GraphQL.
-        // Let's use the standard POST to /customers/{id}/metafields.json which creates.
-        // To update, we technically need the metafield ID if using REST, OR use the "key" to find it.
-
-        // BETTER APPROACH: Use GraphQL for this as it handles "upsert" by key much better.
-        // But since this file is using REST (axios), let's stick to REST but check if we can just overwrite.
-        // Actually, for simple key-value storage without tracking IDs, GraphQL `customerUpdate` is cleaner.
-        // But let's try to stick to the existing pattern of this file.
-
-        // Strategy: Try to create. If it fails (rare for metafields if creating), handle it.
-        // Actually, Shopify REST API allows creating/updating metafields via the Customer update endpoint too.
-
-        await adminClient.put(`/customers/${numericId}.json`, {
+        const payload = {
             customer: {
                 id: numericId,
                 metafields: [
@@ -94,10 +84,15 @@ async function updateCustomerCartId(customerId, cartId) {
                     }
                 ]
             }
-        });
-        console.log(`[ShopifyAdmin] Updated Cart ID ${cartId} for Customer ${numericId}`);
+        };
+
+        const response = await adminClient.put(`/customers/${numericId}.json`, payload);
+        console.log(`[ShopifyAdmin] Metafield Update Success. Status: ${response.status}`);
     } catch (error) {
         console.error("Error updating customer cart metafield:", error.response?.data || error.message);
+        if (error.response?.data?.errors) {
+            console.error("Detailed Errors:", JSON.stringify(error.response.data.errors, null, 2));
+        }
     }
 }
 
@@ -111,13 +106,21 @@ async function getCustomerCartId(customerId) {
     const numericId = customerId.toString().replace("gid://shopify/Customer/", "");
 
     try {
+        console.log(`[ShopifyAdmin] Fetching Metafield for Customer ID: ${numericId}`);
         const response = await adminClient.get(`/customers/${numericId}/metafields.json?namespace=custom&key=active_cart_id`);
-        // The response contains a list of metafields matching the query
+
         const metafields = response.data.metafields;
+        console.log(`[ShopifyAdmin] Found ${metafields.length} metafields for customer.`);
 
         const cartMetafield = metafields.find(m => m.key === "active_cart_id" && m.namespace === "custom");
 
-        return cartMetafield ? cartMetafield.value : null;
+        if (cartMetafield) {
+            console.log(`[ShopifyAdmin] Found active_cart_id: ${cartMetafield.value}`);
+            return cartMetafield.value;
+        } else {
+            console.log(`[ShopifyAdmin] active_cart_id metafield NOT found.`);
+            return null;
+        }
     } catch (error) {
         console.error("Error fetching customer cart metafield:", error.response?.data || error.message);
         return null;
