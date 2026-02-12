@@ -48,11 +48,13 @@ const generateOTP = async (email) => {
  * @param {string} otp 
  * @returns {boolean} True if valid, false otherwise
  */
-const verifyOTP = (email, otp) => {
+const verifyOTP = (email, inputOtp) => {
     const normalizedEmail = email.toLowerCase().trim();
+    const otp = String(inputOtp).trim(); // Ensure it's a string for comparison
+
     const record = otpStore.get(normalizedEmail);
 
-    console.log(`[OTP-SERVICE] Verifying for ${normalizedEmail}. Input OTP: ${otp}`);
+    console.log(`[OTP-SERVICE] Verifying for ${normalizedEmail}. Input OTP: "${otp}" (type: ${typeof inputOtp})`);
 
     if (!record) {
         console.warn(`[OTP-SERVICE] No OTP record found for ${normalizedEmail}`);
@@ -73,7 +75,7 @@ const verifyOTP = (email, otp) => {
         return true;
     }
 
-    console.warn(`[OTP-SERVICE] Invalid OTP for ${normalizedEmail}. Expected: ${record.otp}, Got: ${otp}`);
+    console.warn(`[OTP-SERVICE] Invalid OTP for ${normalizedEmail}. Expected: "${record.otp}" (${typeof record.otp}), Got: "${otp}" (${typeof otp})`);
     return false;
 };
 
